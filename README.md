@@ -1,7 +1,6 @@
-
 # Stock Price Prediction
 
-This project uses historical stock price data to predict future prices using Random Forest and XGBoost models. It includes data collection, preprocessing, model training, and evaluation, and produces a comparison of actual vs predicted stock prices.
+This project uses historical stock price data to predict future prices using Random Forest and XGBoost models. It includes data collection, preprocessing with feature engineering, model training with hyperparameter tuning, and comprehensive evaluation against a naive baseline.
 
 ## Prerequisites
 
@@ -18,48 +17,54 @@ This project uses historical stock price data to predict future prices using Ran
      ```bash
      python src/data_collection.py
      ```
-
-   - **Note**: If you want to use data for a different stock, update the stock ticker in the `data_collection.py` file by changing `'AAPL'` to your preferred ticker symbol. For example, to use Tesla stock (TSLA), modify the line in `src/data_collection.py` like this:
-     ```python
-     stock_data = download_stock_data('TSLA', '2010-01-01', '2023-01-01')
-     ```
+   - This saves the raw data to `data/aapl_stock_data.csv`.
+   - **Note**: To use data for a different stock, update the stock ticker in `src/data_collection.py`.
 
 ### 2. **Preprocess data and train models**
-   - Once the data is downloaded, run the preprocessing and model training steps:
+   - Once the raw data is downloaded, run the preprocessing and model training script:
      ```bash
      python src/model_training.py
      ```
-
-   - This will train two models: Random Forest and XGBoost. The trained models will be saved in the `models/` directory.
+   - **Data Preprocessing involves:**
+     - Converting the 'Date' column and setting it as the index.
+     - Engineering new features:
+       - Lagged 'Close' prices (1, 3, and 5 days).
+       - Moving averages of 'Close' prices (7-day and 30-day).
+     - Handling NaNs introduced by these operations by dropping rows.
+     - Performing a sequential train-test split (data is not shuffled to respect time series nature).
+     - Scaling features using `StandardScaler` (fitted on training data only).
+   - The script saves the processed data (`X_train`, `X_test`, `y_train`, `y_test`) and the `scaler` object to the `processed_data/` directory.
+   - **Model Training involves:**
+     - Training Random Forest and XGBoost regressors.
+     - Performing hyperparameter tuning for both models using `GridSearchCV` with `TimeSeriesSplit` for cross-validation, which is suitable for time-series data.
+     - The best parameters found during tuning are printed to the console.
+     - The tuned models are saved to the `models/` directory (e.g., `random_forest_model.pkl`, `xgboost_model.pkl`).
 
 ### 3. **Evaluate the models**
    - To evaluate the models and visualize the actual vs predicted stock prices:
      ```bash
      python src/evaluation.py
      ```
+   - This script now loads the processed data (`X_test`, `y_test`, `y_train`) from the `processed_data/` directory and the trained models from the `models/` directory.
+   - **Evaluation includes:**
+     - Calculating Root Mean Squared Error (RMSE), Mean Absolute Error (MAE), and R² score for both trained models.
+     - Evaluating a **naive baseline model** (predicting the previous day's close) for comparison.
+     - Printing metrics for all models.
+     - Generating and saving plots comparing actual vs. predicted stock prices for each model to the `results/` directory (e.g., `results/random_forest_predictions.png`).
 
-   - The script will display the following metrics for both models:
-     - **Root Mean Squared Error (RMSE)**
-     - **Mean Absolute Error (MAE)**
-     - **R² score**
-
-   - It will also generate plots comparing the actual stock prices with the predicted stock prices for each model.
+### 4. **Running Tests**
+   - Unit tests are provided for the preprocessing functionality. To run them:
+     ```bash
+     python -m unittest discover tests
+     ```
+   - Ensure you are in the project root directory when running this command.
 
 ## Results
 
-### Example Results (using AAPL stock data)
-   - **Random Forest Model Results**:
-     - RMSE: 5.02
-     - MAE: 3.80
-     - R²: 0.98
-     
-   - **XGBoost Model Results**:
-     - RMSE: 4.75
-     - MAE: 3.60
-     - R²: 0.99
+The "Results" section in the original README, including example metrics and plots, serves as an illustration. Actual results may vary based on the dataset, features, and tuning. The evaluation script will print the latest metrics and save updated plots.
 
 ### Example Plots
-After running the evaluation script, you'll see plots similar to this:
+Plots are saved in the `results/` directory.
 
    - **Random Forest Actual vs Predicted Prices**:
      ![Random Forest Plot](results/Random_Forest_predictions.png)
@@ -67,37 +72,18 @@ After running the evaluation script, you'll see plots similar to this:
    - **XGBoost Actual vs Predicted Prices**:
      ![XGBoost Plot](results/XGBoost_predictions.png)
 
-### Performance Comparison:
-A performance comparison plot for both models based on RMSE, MAE, and R² scores:
+   - **Naive Baseline Actual vs Predicted Prices**: (Example filename, actual might vary)
+     ![Naive Baseline Plot](results/naive_baseline_predictions.png)
 
-   ![Performance Comparison](results/model_performance_comparison_improved.png)
-
-## Understanding R² Score:
-
-The **R² score** (coefficient of determination) is a measure of how well the model explains the variability of the target variable (in this case, stock prices). The R² score ranges from 0 to 1:
-- **R² = 1** means the model perfectly explains the variance in the data.
-- **R² = 0** means the model doesn't explain any of the variability (equivalent to predicting the mean).
-- **R² < 0** means the model is worse than just predicting the mean.
-
-For example:
-- **R² = 0.98** for Random Forest means that the model explains 98% of the variance in stock prices.
-- **R² = 0.99** for XGBoost means that the model explains 99% of the variance in stock prices.
-
-## Customize the Dataset
-To use a different stock dataset, simply modify the `data_collection.py` file and provide your desired stock ticker and date range. For example, if you want to use Google (GOOGL) stock data, update the following line in `src/data_collection.py`:
-
-```python
-stock_data = download_stock_data('GOOGL', '2010-01-01', '2023-01-01')
-```
-
-After updating the dataset, rerun the scripts as described in the **How to Run** section.
 
 ## Directory Structure
 
-- `data/`: Stores downloaded stock data.
-- `models/`: Stores trained models.
+- `data/`: Stores downloaded raw stock data (e.g., `aapl_stock_data.csv`).
+- `processed_data/`: Stores processed data (e.g., `X_train.pkl`, `y_test.pkl`) and the scaler (`scaler.pkl`).
+- `models/`: Stores trained and tuned machine learning models.
 - `results/`: Stores generated graphs, such as model performance and actual vs predicted prices.
-- `src/`: Contains the source code for data collection, preprocessing, model training, and evaluation.
+- `src/`: Contains the Python source code for data collection, preprocessing, model training, and evaluation.
+- `tests/`: Contains unit tests for the project.
 
 ## License
-This project is open source and available under the [MIT License](LICENSE).
+This project is open source and available under the [MIT License](LICENSE). (Assuming a LICENSE file exists or will be added - if not, this line can be removed or updated).
